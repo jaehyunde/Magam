@@ -1,2 +1,4 @@
 # magam
-Corporate Inventory &amp; Closing Management System
+Corporate Inventory & Closing Management System
+
+---
