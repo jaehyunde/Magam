@@ -1,4 +1,4 @@
-# Projektspezifikation: MaGam (Abschluss)
+# Projektspezifikation: MaGam
 
 ## 📋 Serviceübersicht
 * **Benutzerstruktur**: 1 Administrator (Hauptbereichsleiter) - 2 Zwischenmanager pro Filiale (Inhaber, Nachtschichtleiter)
@@ -135,7 +135,7 @@
 
 ===
 
-# 프로젝트 명세서: MaGam (마감)
+# 프로젝트 명세서: MaGam
 
 ## 📋 서비스 개요
 * **사용자 구조**: 관리자 1명 (본부장) - 매장별 중간관리자 2명 (사장, 야간실장)
