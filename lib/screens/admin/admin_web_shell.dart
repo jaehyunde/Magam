@@ -326,7 +326,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
             // 🚀 [수정] getTooltipColor 대신 tooltipBgColor 사용
-            tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+            getTooltipColor: (touchedSpot) => Colors.blueGrey.withOpacity(0.8),
             getTooltipItems: (List<LineBarSpot> touchedSpots) {
               return touchedSpots.map((LineBarSpot touchedSpot) {
                 return LineTooltipItem(
@@ -401,7 +401,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
         barTouchData: BarTouchData(
           touchTooltipData: BarTouchTooltipData(
             // 🚀 [수정] getTooltipColor 대신 tooltipBgColor 사용
-            tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+            getTooltipColor: (group) => Colors.blueGrey.withOpacity(0.8),
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${currencyFormat.format(rod.toY)}원',

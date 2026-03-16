@@ -37,6 +37,7 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
   int _expenseTotal = 0;
 
   bool _isConfigLoading = true;
+  bool _isLocked = false; // 🚀 잠금 상태 변수 추가
 
   @override
   bool get wantKeepAlive => true;
@@ -46,11 +47,16 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
     super.initState();
     _initStoreConfig(); // 🚀 1. 설정 먼저 로드
   }
-
-  // 🚀 [추가] 매장 설정 로드 및 컨트롤러 동적 생성
-  // lib/screens/report/tab_closing.dart 내 _initStoreConfig 함수 수정
-
-  // lib/screens/report/tab_closing.dart 내 _initStoreConfig 함수
+  // 🚀 [추가] 부모 위젯(달력)에서 날짜가 바뀌었을 때 실행되는 코드
+  @override
+  void didUpdateWidget(covariant ClosingTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 💡 선택된 날짜가 실제로 바뀌었는지 확인 후 데이터를 다시 로드합니다.
+    if (oldWidget.selectedDate != widget.selectedDate) {
+      print("🚩 [ClosingTab] 날짜 변경 감지: ${widget.selectedDate} -> 로드 시작");
+      _loadDataFromDB(widget.selectedDate);
+    }
+  }
 
   Future<void> _initStoreConfig() async {
     final String currentStoreId = FirebaseAuth.instance.currentUser!.uid;
@@ -92,12 +98,13 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
 
   Future<void> _loadDataFromDB(DateTime date) async {
     final String currentStoreId = FirebaseAuth.instance.currentUser!.uid;
+    // 🚀 기존에 임포트된 NumberFormat을 사용하여 포맷팅 준비
+    final formatter = NumberFormat('#,###');
 
     void _clearAllControllers() {
       _salesCtrls.values.forEach((c) => c.clear());
       _expenseCtrls.values.forEach((c) => c.clear());
       _inventory.values.forEach((itemMap) => itemMap.values.forEach((c) => c.clear()));
-
       _cardSalesCtrl.clear();
       _weeklySalesCtrl.clear();
       _hireCtrl.clear();
@@ -106,37 +113,53 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
       _preDepositCtrl.clear();
       _notesCtrl.clear();
       _managerNameCtrl.clear();
-
       _cashTotal = 0; _grandTotal = 0; _expenseTotal = 0;
     }
 
     try {
       final report = await ReportService().getReport(date, currentStoreId);
 
+      // 🚩 [디버그 로그] 데이터 수신 확인
+      print("🚩 [ClosingTab] 데이터 로드 시도: ${DateFormat('yyyy-MM-dd').format(date)}");
+      if (report == null) {
+        print("🚩 [ClosingTab] 결과: 해당 날짜의 데이터가 없습니다(null).");
+      } else {
+        print("🚩 [ClosingTab] 결과: 데이터 발견! (책임자: ${report.author})");
+      }
+
       if (mounted) {
         setState(() {
           if (report == null) {
             _clearAllControllers();
+            _isLocked = false; // 데이터 없으면 잠금 해제
             return;
           }
 
-          // 1. 매출 데이터 바인딩 (Dynamic)
+          // 1. 매출 데이터 바인딩 (숫자를 콤마 포맷으로 변환하여 주입)
           final cashFlow = report.cashFlow ?? {};
           _salesCtrls.forEach((key, ctrl) {
-            ctrl.text = cashFlow[key]?.toString() ?? '';
+            final val = cashFlow[key];
+            // 🚀 [보정] raw 숫자를 콤마가 포함된 문자열로 바꿔서 컨트롤러에 넣습니다.
+            ctrl.text = (val == null || val == 0) ? '' : formatter.format(val);
+            if (val != null) print("🚩 [ClosingTab] 매출 로드: $key = $val");
           });
-          _cardSalesCtrl.text = report.cardSales?.toString() ?? '';
-          _weeklySalesCtrl.text = cashFlow['주간매출']?.toString() ?? '';
 
-          // 2. 지출 데이터 바인딩 (Dynamic)
+          _cardSalesCtrl.text = (report.cardSales == null || report.cardSales == 0)
+              ? '' : formatter.format(report.cardSales);
+
+          final weekly = cashFlow['주간매출'];
+          _weeklySalesCtrl.text = (weekly == null || weekly == 0) ? '' : formatter.format(weekly);
+
+          // 2. 지출 데이터 바인딩
           for (var expense in report.expenseList ?? []) {
             final key = expense['category']?.toString();
             if (key != null && _expenseCtrls.containsKey(key)) {
-              _expenseCtrls[key]!.text = expense['amount']?.toString() ?? '';
+              final amt = expense['amount'];
+              _expenseCtrls[key]!.text = (amt == null || amt == 0) ? '' : formatter.format(amt);
             }
           }
 
-          // 3. 재고 데이터 바인딩 (Dynamic)
+          // 3. 재고 데이터 바인딩 (수량 데이터이므로 기존처럼 유지)
           for (var log in report.inventoryLog ?? []) {
             final item = log['품목명']?.toString();
             if (item != null && _inventory.containsKey(item)) {
@@ -150,6 +173,7 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
             }
           }
 
+          // 4. 인사 및 기타 정보
           _hireCtrl.text = report.hiring ?? '';
           _resignCtrl.text = report.leaving ?? '';
           _transferCtrl.text = report.transfer ?? '';
@@ -157,12 +181,14 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
           _notesCtrl.text = report.closingNote ?? '';
           _managerNameCtrl.text = report.author ?? '';
 
+          // 🚀 [필수] 모든 컨트롤러에 데이터 주입 후 합계를 다시 계산하여 화면 갱신
           _updateSalesTotal();
           _updateExpenseTotal();
+          _isLocked = (report.status == 'complete');
         });
       }
     } catch (e) {
-      print("데이터 로드 에러: $e");
+      print("❌ [ClosingTab] 데이터 로드 중 치명적 에러: $e");
     }
   }
 
@@ -289,10 +315,76 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
             const SizedBox(height: 10),
 
             // 🚀 동적 재고 테이블 생성
-            _buildDynamicInventoryTable(),
+            _buildDynamicInventoryTable(),// 🚀 [복구 및 추가 시작]
+            const SizedBox(height: 30),
+            const Divider(thickness: 1),
+            const Text('인사 및 기타 사항', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: khakiMain)),
+            const SizedBox(height: 15),
 
-            // ... 나머지 인사 및 기타 UI (기존 코드와 동일)
+            // 인사 정보 필드 (채용, 퇴사, 전출 등)
+            _buildGeneralTextField('입사/채용 내역', _hireCtrl, Icons.person_add),
+            _buildGeneralTextField('퇴사 내역', _resignCtrl, Icons.person_remove),
+            _buildGeneralTextField('전출/전입/기타', _transferCtrl, Icons.swap_horiz),
+            _buildGeneralTextField('선입금', _preDepositCtrl, Icons.account_balance_wallet),
+
+            const SizedBox(height: 20),
+            _buildGeneralTextField('마감 특이사항', _notesCtrl, Icons.note_alt, maxLines: 3),
+
+            const SizedBox(height: 30),
+            const Divider(thickness: 1),
+
+            // 책임자 이름 입력 (제출 전 필수 확인 항목)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: TextField(
+                controller: _managerNameCtrl,
+                decoration: const InputDecoration(
+                  labelText: '책임자 이름',
+                  hintText: '이름을 입력하세요',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.assignment_ind, color: khakiMain),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // 🚀 대망의 저장 및 제출 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton.icon(
+                onPressed: _isLocked ? null : _submitReport,
+                icon: const Icon(Icons.send_rounded),
+                label: const Text('마감 보고서 최종 제출', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: khakiMain,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 50), // 하단 여백
           ],
+        ),
+      ),
+    );
+  }
+
+  // 🚀 일반 텍스트 입력을 위한 헬퍼 위젯 (추가 필요)
+  Widget _buildGeneralTextField(String label, TextEditingController ctrl, IconData icon, {int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        readOnly: _isLocked,
+        controller: ctrl,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.grey, size: 20),
+          border: const OutlineInputBorder(),
+          isDense: true,
         ),
       ),
     );
@@ -305,6 +397,7 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
+        readOnly: _isLocked,
         controller: controller,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyInputFormatter()],
@@ -352,6 +445,7 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
       width: 60,
       margin: const EdgeInsets.all(2),
       child: TextField(
+        readOnly: _isLocked,
         controller: ctrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
@@ -413,9 +507,15 @@ class _ClosingTabState extends State<ClosingTab> with AutomaticKeepAliveClientMi
             style: ElevatedButton.styleFrom(backgroundColor: khakiMain, foregroundColor: Colors.white),
             onPressed: () async {
               try {
+                // 1. DB에 저장 실행
                 await _saveToDB();
+
                 if (mounted) {
+                  ReportService.forceRefresh = true;
+
+                  setState(() { _isLocked = true; });
                   Navigator.pop(ctx);
+
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ 마감 보고서가 저장되었습니다!')));
                 }
               } catch (e) {

@@ -11,35 +11,30 @@ class AuthProvider with ChangeNotifier {
   UserModel? _user;
   UserModel? get user => _user;
 
-  // manager 권한도 포함하여 체크
-  bool get isAdmin => _user?.role == 'admin' || _user?.role == 'manager';
+  bool get isAdmin => _user?.role == 'admin';
+  bool get isManager => _user?.role == 'manager';
+  // 앱에 들어올 수 있는 사람인가? (본부장 또는 매니저)
+  bool get isAuthorized => isAdmin || isManager;
+
   bool get isAuthenticated => _user != null;
 
-  // 생성자에서 강제 로그아웃 로직을 제거했습니다.
-  // 대신 앱 시작 시 '현재 유저가 누구인지'만 확인합니다.
   AuthProvider() {
-    _checkCurrentUser();
+    // 🚀 [1번 문제 해결] 자동 로그인 차단
+    // 기존에 세션이 남아있더라도, 앱 시작 시 무시하도록 주석 처리하거나 로그아웃을 명시합니다.
+    // _checkCurrentUser(); // 이 부분을 주석 처리하여 자동 로그인을 방지합니다.
+    _forceLogoutOnStart();
   }
 
-  void _checkCurrentUser() {
-    final currentUser = _auth.currentUser;
-    if (currentUser != null) {
-      _loadUserData(currentUser.uid);
-    }
-  }
-
-  // 유저 데이터를 가져오는 공통 함수
-  Future<void> _loadUserData(String uid) async {
-    DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
-    if (doc.exists) {
-      _user = UserModel.fromMap(doc.data() as Map<String, dynamic>, uid);
-      notifyListeners();
-    }
+  // 앱 실행 시 기존 세션을 완전히 비우는 함수
+  void _forceLogoutOnStart() async {
+    await _auth.signOut();
+    _user = null;
+    debugPrint("✅ 시스템 시작: 기존 세션을 초기화하고 로그인 화면으로 진입합니다.");
   }
 
   Future<String?> login(String email, String password) async {
     try {
-      // 🚀 [해결3] 로그인 시도 직전에 무조건 이전 상태를 초기화합니다.
+      debugPrint("🚀 로그인 프로세스 시작: $email");
       _user = null;
       notifyListeners();
 
@@ -48,41 +43,52 @@ class AuthProvider with ChangeNotifier {
         email: email,
         password: password,
       );
+      debugPrint("1️⃣ Firebase 인증 성공: ${userCredential.user!.uid}");
 
       // 2. DB 정보 가져오기
       String uid = userCredential.user!.uid;
       DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
 
       if (doc.exists) {
-        _user = UserModel.fromMap(doc.data() as Map<String, dynamic>, uid);
+        debugPrint("2️⃣ Firestore 문서 발견: ${doc.data()}");
 
-        // 로그인 성공 후 반드시 알림을 주어 화면을 전환시킵니다.
-        notifyListeners();
-        return null;
+        // 🚀 [2번 문제 진단] 데이터 매핑 중 에러가 나는지 확인
+        try {
+          _user = UserModel.fromMap(doc.data() as Map<String, dynamic>, uid);
+          debugPrint("3️⃣ 유저 모델 매핑 성공: Role = ${_user?.role}");
+        } catch (e) {
+          debugPrint("❌ 유저 모델 매핑 실패 (데이터 타입 불일치 등): $e");
+          return "데이터 매핑 오류: $e";
+        }
+
+        // 🚀 [2번 문제 진단] 권한 확인
+        if (isAuthorized) {
+          debugPrint("4️⃣ 권한 확인 완료: ${_user?.role} 입장 허가");
+          notifyListeners();
+          return null;
+        } else {
+          debugPrint("❌ 권한 거부: 등록되지 않은 역할(${_user?.role})");
+          await _auth.signOut();
+          _user = null;
+          return '접근 권한이 없는 계정입니다.';
+        }
       } else {
-        await _auth.signOut(); // 정보 없으면 로그아웃
-        return '사용자 정보가 시스템에 등록되지 않았습니다.';
+        await _auth.signOut();
+        return '사용자 정보가 없습니다.';
       }
-    } on FirebaseAuthException catch (e) {
-      _user = null;
-      notifyListeners();
-      return e.message; // "비밀번호 틀림" 등의 메시지 반환
     } catch (e) {
-      _user = null;
-      notifyListeners();
-      print('🔥🔥 로그인 에러: $e');
-      return '로그인 프로세스 중 오류가 발생했습니다.';
+      return e.toString();
     }
   }
 
   Future<void> logout() async {
     try {
       await _auth.signOut();
-      _user = null; // 메모리 비우기
-      notifyListeners(); // 로그인 페이지로 튕겨내기
-      print("✅ 로그아웃 완료");
+      _user = null;
+      notifyListeners();
+      debugPrint("✅ 로그아웃 완료");
     } catch (e) {
-      print("❌ 로그아웃 에러: $e");
+      debugPrint("❌ 로그아웃 에러: $e");
     }
   }
 }

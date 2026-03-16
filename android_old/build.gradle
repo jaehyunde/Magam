@@ -1,0 +1,21 @@
+// 이 파일에는 이제 복잡한 buildscript 설정이 필요 없습니다.
+// 모든 버전 관리는 settings.gradle에서 수행하게 됩니다.
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

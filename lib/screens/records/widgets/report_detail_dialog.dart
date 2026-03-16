@@ -23,7 +23,7 @@ class ReportDetailDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
 
       title: Text(
-        '${report.date} - $title 상세 기록',
+        title,
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
 
@@ -46,8 +46,18 @@ class ReportDetailDialog extends StatelessWidget {
 class DetailRow extends StatelessWidget {
   final String label;
   final dynamic value;
+  final double fontSize;
+  final double verticalPadding;
+  final double labelWidth; // 🚀 1. 변수를 선언했습니다.
 
-  const DetailRow({super.key, required this.label, required this.value});
+  const DetailRow({
+    super.key,
+    required this.label,
+    required this.value,
+    this.fontSize = 15.0, // 🚀 기본 글씨를 12로 낮췄습니다.
+    this.verticalPadding = 2.0, // 🚀 기본 간격을 촘촘하게 2로 낮췄습니다.
+    this.labelWidth = 120.0, // 🚀 2. 생성자에도 기본값을 넣었습니다.
+  });
 
   String _formatCurrency(dynamic val) {
     if (val is num) {
@@ -60,7 +70,7 @@ class DetailRow extends StatelessWidget {
   Widget build(BuildContext context) {
     String displayValue = (value == null || (value is String && value.isEmpty)) ? '-' : value.toString();
 
-    // 금액 관련 필드는 포맷팅
+    // 금액 관련 필드 포맷팅
     if (label.contains('매출') || label.contains('지출') || label.contains('총액') || label.contains('금액')) {
       if (value is num) {
         displayValue = "${_formatCurrency(value)}원";
@@ -68,15 +78,40 @@ class DetailRow extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: verticalPadding),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 120,
-            child: Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            width: labelWidth, // 🚀 이제 여기서 에러가 나지 않습니다!
+            child: FittedBox(
+              alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                  fontSize: fontSize,
+                ),
+                maxLines: 1,
+                softWrap: false,
+              ),
+            ),
           ),
-          Expanded(child: Text(displayValue, style: const TextStyle(color: Colors.black87))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(
+                displayValue,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: fontSize,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+          ),
         ],
       ),
     );

@@ -10,6 +10,10 @@ class DailyReport {
   final String author;
   final String status;
 
+  // 시간 추적 빌드 (보고시간 확인용)
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
   // 2. 오전 보고
   final Map<String, dynamic> staffCounts;
   final Map<String, dynamic> qualityCheck;
@@ -48,6 +52,8 @@ class DailyReport {
     required this.storeId,
     required this.author,
     required this.status,
+    this.createdAt,
+    this.updatedAt,
     required this.staffCounts,
     required this.qualityCheck,
     required this.reservation,
@@ -77,15 +83,18 @@ class DailyReport {
 
     if (data == null) throw Exception("데이터가 비어있습니다.");
 
-    // 🚀 [추가] 안전한 숫자 변환 헬퍼
     int toInt(dynamic v) => (v is num) ? v.toInt() : 0;
     double toDouble(dynamic v) => (v is num) ? v.toDouble() : 0.0;
 
-    // 🚀 [추가] 안전한 Map 변환 헬퍼
     Map<String, double> loadDoubleMap(dynamic source) {
       if (source == null || source is! Map) return {};
       return Map<String, dynamic>.from(source).map(
               (key, value) => MapEntry(key.toString(), toDouble(value)));
+    }
+
+    DateTime? toDateTime(dynamic v) {
+      if (v is Timestamp) return v.toDate();
+      return null;
     }
 
     return DailyReport(
@@ -94,6 +103,9 @@ class DailyReport {
       storeId: data['storeId'] ?? '',
       author: data['author'] ?? '',
       status: data['status'] ?? 'writing',
+
+      createdAt: toDateTime(data['createdAt']),
+      updatedAt: toDateTime(data['updatedAt']),
 
       staffCounts: Map<String, dynamic>.from(data['staffCounts'] ?? {}),
       qualityCheck: Map<String, dynamic>.from(data['qualityCheck'] ?? {}),
@@ -130,6 +142,9 @@ class DailyReport {
       'storeId': storeId,
       'author': author,
       'status': status,
+
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
 
       'staffCounts': staffCounts,
       'qualityCheck': qualityCheck,
