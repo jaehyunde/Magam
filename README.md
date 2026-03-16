@@ -116,6 +116,57 @@
 * `[x]` Behebung des Login-Problems
 * `[ ]` Behebung der Grafik-Funktionsprobleme im Web-Dashboard
 
+### 27 Feb 2026 (Fri)
+
+#### Bug Fixes
+- Fixed an issue in `tab_day.dart` where date input did not work for **pork ribs** and **dongchimi**.
+- In the **Director Dashboard → Store Records**, the reporter’s name was not displayed when viewing store details → reporter information added.
+
+#### UI / UX Improvements
+- Updated the title format when opening store details in the Director Dashboard.
+    - Before: `2026-02-27 - xx store detailed record`
+    - After: `February 27, 2026 – Manan Branch Closing Report`
+
+#### New Features
+- Added time range filters in **Director Dashboard → Store Records**:
+    - 1 Week
+    - 1 Month
+    - 1 Year
+    - All Time
+- In **Manager tab_day → Weekly Report**, added quantity adjustment buttons (+ / -) when selecting expiration dates.
+- Implemented restriction so that **reported content cannot be freely modified**.
+
+
+---
+
+### 01 Mar 2026 (Sun)
+
+#### Continuation Work
+- Continued development based on tasks from Feb 27.
+
+#### Feature Updates
+- Implemented **edit lock system**:
+    - Once a closing report is submitted, all edit buttons are locked at the store level.
+- Modified the **date selection box in the Director Dashboard**:
+    - Removed from **Store Records tab**
+    - Kept only in **All Stores tab**.
+- Added **password saving and auto-login functionality** on mobile devices.
+
+#### Manager Features
+- In **Manager tab_report (Record Viewing)**:
+    - Added filters to view **daily / monthly / yearly / all-time records** for the manager’s store.
+- Fixed an issue where **Morning Shift Report Details** in `tab_report` did not display all content.
+
+#### Pending Task
+- [ ] In **Manager tab_closing**, if sales data does not match the data from `tab_sales`, show an alert popup and allow the user to choose whether to **force save**.
+
+#### Dashboard Improvements
+- Updated date display in **Director Dashboard → Store Records**:
+    - Before: `MM DD`
+    - After: `YYYY MM DD`
+- Added **“All Stores” option** in store selection under **Store Records**.
+    - Previously showed: *No reports recorded*.
+
 
 ### 01.03.2026 So
 
