@@ -116,7 +116,7 @@
 * `[x]` Behebung des Login-Problems
 * `[ ]` Behebung der Grafik-Funktionsprobleme im Web-Dashboard
 
-### 27 Feb 2026 (Fri)
+### 27 Feb 2026 (Fr.)
 
 #### Bug Fixes
 - Fixed an issue in `tab_day.dart` where date input did not work for **pork ribs** and **dongchimi**.
@@ -139,7 +139,7 @@
 
 ---
 
-### 01 Mar 2026 (Sun)
+### 01 Mar 2026 (So.)
 
 #### Continuation Work
 - Continued development based on tasks from Feb 27.
@@ -166,9 +166,6 @@
     - After: `YYYY MM DD`
 - Added **“All Stores” option** in store selection under **Store Records**.
     - Previously showed: *No reports recorded*.
-
-
-### 01.03.2026 So
 
 ## 📂 Datenbank- und App-Struktur
 
